@@ -1,6 +1,6 @@
 # 📝 To Do List (HTML, CSS e JavaScript)
 
-## 📌 Descrição do Projeto
+## 📌 Descrição do Projeto 
 
 Este projeto consiste em uma aplicação simples de **lista de tarefas (To Do List)** desenvolvida utilizando apenas **HTML, CSS e JavaScript puro (Vanilla JS)**.
 
