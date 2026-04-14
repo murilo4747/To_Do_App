@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>To Do List PRO MAX</title>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial }
+
+body {
+    background:#eef2f7;
+    display:flex;
+    justify-content:center;
+    padding:30px;
+}
+
+.container {
+    width:650px;
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+h1 { text-align:center; margin-bottom:15px }
+
+/* FORM */
+form { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px }
+
+input, select, button {
+    padding:10px;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+
+button {
+    background:#4CAF50;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+button:hover { opacity:0.9 }
+
+/* FILTROS */
+.filters {
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+/* TASK */
+.task {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px;
+    margin-top:10px;
+    border-radius:8px;
+}
+
+.alta { background:#ffcccc }
+.media { background:#fff3cd }
+.baixa { background:#d4edda }
+
+.task-info { flex:1 }
+
+.task small { display:block }
+
+.completed { text-decoration:line-through; color:gray }
+
+/* BOTÕES */
+.actions button {
+    margin-left:5px;
+    background:#007bff;
+}
+
+/* SECTIONS */
+.section { margin-top:20px }
+
+/* PAGINAÇÃO */
+.pagination {
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-top:15px;
+}
+
+/* CONTADOR */
+.counter {
+    text-align:center;
+    margin-top:10px;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>To Do List PRO MAX</h1>
+
+<form id="form">
+    <input type="text" id="tarefa" placeholder="Tarefa..." required>
+    <select id="prioridade">
+        <option value="alta">Alta</option>
+        <option value="media">Média</option>
+        <option value="baixa">Baixa</option>
+    </select>
+    <input type="datetime-local" id="data" required>
+    <button>Adicionar</button>
+</form>
+
+<div class="filters">
+    <input type="text" id="search" placeholder="Buscar...">
+    <select id="filtro">
+        <option value="todas">Todas</option>
+        <option value="alta">Alta</option>
+        <option value="media">Média</option>
+        <option value="baixa">Baixa</option>
+    </select>
+    <select id="ordenar">
+        <option value="data">Ordenar por data</option>
+        <option value="prioridade">Ordenar por prioridade</option>
+    </select>
+</div>
+
+<div class="section">
+    <h2>Pendentes</h2>
+    <div id="pendentes"></div>
+</div>
+
+<div class="section">
+    <h2>Concluídas</h2>
+    <div id="concluidas"></div>
+</div>
+
+<div class="pagination">
+    <button id="prev">Anterior</button>
+    <span id="pageInfo"></span>
+    <button id="next">Próximo</button>
+</div>
+
+<div class="counter" id="counter"></div>
+
+</div>
+
+<script>
+// ===== ESTADO =====
+let tarefas = JSON.parse(localStorage.getItem("tarefas")) || [];
+let pagina = 0;
+const porPagina = 5;
+
+// ===== UTIL =====
+const salvar = () => localStorage.setItem("tarefas", JSON.stringify(tarefas));
+
+// ===== FILTRAR + ORDENAR =====
+function processarDados() {
+    let lista = [...tarefas];
+
+    const busca = document.getElementById("search").value.toLowerCase();
+    const filtro = document.getElementById("filtro").value;
+    const ordenar = document.getElementById("ordenar").value;
+
+    // busca
+    lista = lista.filter(t => t.texto.toLowerCase().includes(busca));
+
+    // filtro
+    if (filtro !== "todas") {
+        lista = lista.filter(t => t.prioridade === filtro);
+    }
+
+    // ordenação
+    if (ordenar === "data") {
+        lista.sort((a,b) => new Date(a.data) - new Date(b.data));
+    } else {
+        const ordem = {alta:1, media:2, baixa:3};
+        lista.sort((a,b) => ordem[a.prioridade] - ordem[b.prioridade]);
+    }
+
+    return lista;
+}
+
+// ===== RENDER =====
+function render() {
+    const pend = document.getElementById("pendentes");
+    const conc = document.getElementById("concluidas");
+
+    pend.innerHTML = "";
+    conc.innerHTML = "";
+
+    const lista = processarDados();
+
+    const totalPaginas = Math.ceil(lista.length / porPagina);
+
+    const inicio = pagina * porPagina;
+    const itens = lista.slice(inicio, inicio + porPagina);
+
+    itens.forEach((tarefa, i) => {
+
+        const div = document.createElement("div");
+        div.className = `task ${tarefa.prioridade}`;
+
+        const info = document.createElement("div");
+        info.className = "task-info";
+
+        info.innerHTML = `
+            <strong>${tarefa.texto}</strong>
+            <small>${new Date(tarefa.data).toLocaleString()}</small>
+        `;
+
+        if (tarefa.concluida) info.classList.add("completed");
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        // concluir
+        const btnDone = document.createElement("button");
+        btnDone.textContent = tarefa.concluida ? "↩" : "✔";
+        btnDone.onclick = () => {
+            tarefa.concluida = !tarefa.concluida;
+            salvar(); render();
+        };
+
+        // editar
+        const btnEdit = document.createElement("button");
+        btnEdit.textContent = "✏";
+        btnEdit.onclick = () => {
+            const novo = prompt("Editar tarefa:", tarefa.texto);
+            if (novo) tarefa.texto = novo;
+            salvar(); render();
+        };
+
+        // deletar
+        const btnDel = document.createElement("button");
+        btnDel.textContent = "🗑";
+        btnDel.onclick = () => {
+            if (confirm("Excluir tarefa?")) {
+                tarefas = tarefas.filter(t => t !== tarefa);
+                salvar(); render();
+            }
+        };
+
+        actions.append(btnDone, btnEdit, btnDel);
+        div.append(info, actions);
+
+        (tarefa.concluida ? conc : pend).appendChild(div);
+    });
+
+    document.getElementById("pageInfo").textContent =
+        `Página ${pagina + 1} de ${totalPaginas || 1}`;
+
+    document.getElementById("counter").textContent =
+        `Total: ${lista.length} tarefas`;
+}
+
+// ===== EVENTOS =====
+document.getElementById("form").onsubmit = e => {
+    e.preventDefault();
+
+    tarefas.push({
+        texto: tarefa.value,
+        prioridade: prioridade.value,
+        data: data.value,
+        concluida: false
+    });
+
+    salvar();
+    render();
+    e.target.reset();
+};
+
+document.getElementById("prev").onclick = () => {
+    if (pagina > 0) { pagina--; render(); }
+};
+
+document.getElementById("next").onclick = () => {
+    pagina++; render();
+};
+
+document.getElementById("search").oninput = render;
+document.getElementById("filtro").onchange = render;
+document.getElementById("ordenar").onchange = render;
+
+// INIT
+render();
+</script>
+
+</body>
+</html>
